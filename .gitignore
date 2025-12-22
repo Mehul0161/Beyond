@@ -1,0 +1,26 @@
+# Laravel
+backend/vendor/
+backend/.env
+backend/storage/*.key
+backend/storage/logs/
+backend/bootstrap/cache/*
+
+# Node
+node_modules/
+enhancement-script/node_modules/
+frontend/node_modules/
+enhancement-script/.env
+frontend/.env
+frontend/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+
