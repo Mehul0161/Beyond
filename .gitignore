@@ -1,26 +1,107 @@
-# Laravel
+# ============================================
+# PHP / Laravel Backend
+# ============================================
 backend/vendor/
 backend/.env
+backend/.env.*
 backend/storage/*.key
 backend/storage/logs/
+backend/storage/framework/cache/
+backend/storage/framework/sessions/
+backend/storage/framework/views/
 backend/bootstrap/cache/*
+backend/composer.lock
+*.log
 
-# Node
+# Laravel specific
+backend/.phpunit.result.cache
+backend/.php_cs.cache
+
+# ============================================
+# Node.js / Frontend & Enhancement Script
+# ============================================
 node_modules/
-enhancement-script/node_modules/
 frontend/node_modules/
-enhancement-script/.env
-frontend/.env
-frontend/dist/
+enhancement-script/node_modules/
 
-# IDE
-.idea/
+# Build outputs
+frontend/dist/
+frontend/build/
+enhancement-script/dist/
+
+# Environment files
+frontend/.env
+frontend/.env.*
+enhancement-script/.env
+enhancement-script/.env.*
+
+# Package manager locks (optional - uncomment if you want to ignore)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# ============================================
+# Logs
+# ============================================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ============================================
+# IDE / Editor
+# ============================================
 .vscode/
+.idea/
 *.swp
 *.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
 
-# OS
+# ============================================
+# OS Files
+# ============================================
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+Desktop.ini
 
+# ============================================
+# Testing / Coverage
+# ============================================
+coverage/
+.nyc_output/
+.phpunit.result.cache
 
+# ============================================
+# Temporary Files
+# ============================================
+*.tmp
+*.temp
+*.cache
+.cache/
+
+# ============================================
+# Database
+# ============================================
+*.sqlite
+*.sqlite3
+*.db
+
+# ============================================
+# Miscellaneous
+# ============================================
+*.tgz
+*.tar.gz
+.env.local
+.env.*.local
