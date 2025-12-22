@@ -15,6 +15,7 @@ A **modular, production-ready 3-phase system** that automatically scrapes articl
 - [Development Workflow](#development-workflow)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
+- [Deployment & Live Link](#deployment--live-link)
 
 ---
 
@@ -1049,4 +1050,103 @@ For issues or questions:
 **Last Updated:** 2024
 
 **Version:** 1.0.0
+
+---
+
+## 🌐 Deployment & Live Link
+
+This section describes how to deploy the project so you can provide a **live link** for reviewers.
+
+### 1. Monorepo on GitHub
+
+This project is already structured as a **single monolithic repo** (`backend/`, `enhancement-script/`, `frontend/`). To publish it:
+
+```bash
+cd C:\Users\mehul\OneDrive\Desktop\beyond
+git init
+git add .
+git commit -m "Initial BeyondChats submission"
+git branch -M main
+git remote add origin https://github.com/<your-username>/beyondchats-assignment.git
+git push -u origin main
+```
+
+Make sure the GitHub repo is **public**.
+
+### 2. Deploy Backend (Laravel + PostgreSQL)
+
+Use any free host that supports PHP/Laravel + Postgres, for example **Render**, **Railway**, or **Fly.io**.
+
+- Create a new **Web Service** from your GitHub repo, with the root set to `backend/`.
+- Set the start command to something like:
+  ```bash
+  php artisan migrate --force || true
+  php -S 0.0.0.0:8000 -t public
+  ```
+- Provision a **PostgreSQL database** on the same platform and set these environment variables (matching `backend/.env`):
+  - `APP_ENV=production`
+  - `APP_KEY` (use `php artisan key:generate --show` locally)
+  - `APP_DEBUG=false`
+  - `DB_CONNECTION=pgsql`
+  - `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` from the managed database
+- Run the SQL in `backend/create_table.sql` once on the hosted DB (via the platform’s SQL console or `psql`).
+
+After deployment, you should have a public API base URL like:
+
+```text
+https://your-laravel-backend.onrender.com/api
+```
+
+### 3. Populate Articles for the Live Demo
+
+You can keep the **scraping + enhancement script** running locally but point them to the **hosted backend**:
+
+1. In `enhancement-script/.env` (locally), set:
+   ```env
+   LARAVEL_API_URL=https://your-laravel-backend.onrender.com/api
+   SERPAPI_KEY=your_real_serpapi_key
+   OPENROUTER_API_KEY=your_real_openrouter_key
+   ```
+2. Run the scraper locally once to seed original articles (with the backend URL updated in `backend/.env` or using the hosted DB directly):
+   ```bash
+   cd backend
+   php artisan scrape:articles
+   ```
+3. Run the enhancement script locally, which will **publish enhanced articles to the hosted API**:
+   ```bash
+   cd enhancement-script
+   npm start
+   ```
+
+Now your hosted backend will contain **both original and enhanced articles** for the React frontend to display.
+
+### 4. Deploy Frontend (React + Vite)
+
+Use **Vercel** or **Netlify**; Vercel example:
+
+1. Connect your GitHub repo to Vercel and select the `frontend/` folder as the project root.
+2. Set build settings:
+   - **Framework**: React
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+3. Configure environment variable in Vercel:
+   ```env
+   VITE_API_URL=https://your-laravel-backend.onrender.com/api
+   ```
+4. Deploy. Vercel will give you a URL like:
+
+```text
+https://beyondchats-frontend.vercel.app
+```
+
+This is the **live link** you should include in your submission.
+
+### 5. Live Link to Include in Submission
+
+Once deployed, update this section with your actual URL so reviewers can see the original and enhanced articles:
+
+- **Live Frontend URL**: https://beyondchats-frontend.vercel.app  _(replace with your actual URL)_
+
+The frontend will call the hosted Laravel API and display both the **original** and **updated (enhanced)** articles as required by the assignment.
+
 

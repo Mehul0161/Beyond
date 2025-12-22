@@ -29,15 +29,34 @@ class ScrapeArticles extends Command
         $this->info("Found last page: {$lastPage}");
 
         // Get articles from the last page
-        $articles = $this->scrapePage($client, $baseUrl . ($lastPage > 1 ? "page/{$lastPage}/" : ''));
+        $lastPageUrl = $baseUrl . ($lastPage > 1 ? "page/{$lastPage}/" : '');
+        $lastPageArticles = $this->scrapePage($client, $lastPageUrl);
         
-        if (empty($articles)) {
+        if (empty($lastPageArticles)) {
             $this->error('No articles found on the last page.');
             return Command::FAILURE;
         }
 
-        // Get the 5 oldest articles (last 5 on the page)
-        $oldestArticles = array_slice($articles, -5);
+        // Start with articles from the last page
+        $allCandidates = $lastPageArticles;
+
+        // If there are fewer than 5 on the last page, pull remaining from the second last page
+        if (count($allCandidates) < 5 && $lastPage > 1) {
+            $secondLastPage = $lastPage - 1;
+            $secondLastUrl = $baseUrl . ($secondLastPage > 1 ? "page/{$secondLastPage}/" : '');
+
+            $this->info("Last page has only " . count($allCandidates) . " articles, fetching remaining from page {$secondLastPage}...");
+
+            $secondLastArticles = $this->scrapePage($client, $secondLastUrl);
+
+            if (!empty($secondLastArticles)) {
+                // Merge: second-last page first, then last page
+                $allCandidates = array_merge($secondLastArticles, $allCandidates);
+            }
+        }
+
+        // Get the 5 oldest articles from the combined list (tail of the array)
+        $oldestArticles = array_slice($allCandidates, -5);
 
         $this->info('Found ' . count($oldestArticles) . ' articles to save.');
 
