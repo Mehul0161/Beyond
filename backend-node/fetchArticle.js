@@ -33,4 +33,25 @@ export async function fetchLatestArticle() {
     }
 }
 
+/**
+ * Fetches a specific article by ID from Laravel API
+ * @param {number} articleId - Article ID
+ * @returns {Promise<{id: number, title: string, content: string, is_enhanced: boolean}>}
+ */
+export async function fetchArticleById(articleId) {
+    try {
+        const response = await axios.get(`${LARAVEL_API_URL}/articles/${articleId}`);
+        const article = response.data;
+
+        return {
+            id: article.id,
+            title: article.title,
+            content: article.content,
+            is_enhanced: article.is_enhanced || false,
+        };
+    } catch (error) {
+        throw new Error(`Failed to fetch article: ${error.message}`);
+    }
+}
+
 

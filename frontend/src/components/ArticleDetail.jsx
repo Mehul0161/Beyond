@@ -1,6 +1,12 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
+import { enhanceArticle } from '../api';
+import { sanitizeContent } from '../utils/contentSanitizer';
 
-function ArticleDetail({ article, onBack }) {
+function ArticleDetail({ article, onBack, onArticleUpdated }) {
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [enhancementError, setEnhancementError] = useState(null);
+  const [enhancementSuccess, setEnhancementSuccess] = useState(null);
+
   const formatDate = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -9,6 +15,41 @@ function ArticleDetail({ article, onBack }) {
       month: 'long',
       day: 'numeric',
     });
+  };
+
+  // Sanitize content on mount and when article changes
+  const sanitizedContent = useMemo(() => {
+    if (!article?.content) return '';
+    try {
+      return sanitizeContent(article.content);
+    } catch (error) {
+      console.error('Error sanitizing content:', error);
+      return article.content; // Fallback to original if sanitization fails
+    }
+  }, [article?.content]);
+
+  const handleEnhance = async () => {
+    if (isEnhancing) return;
+    
+    setIsEnhancing(true);
+    setEnhancementError(null);
+    setEnhancementSuccess(null);
+
+    try {
+      const result = await enhanceArticle(article.id);
+      setEnhancementSuccess(`Article enhanced successfully! New article ID: ${result.data.enhancedArticleId}`);
+      
+      // Refresh the article list after a short delay
+      setTimeout(() => {
+        if (onArticleUpdated) {
+          onArticleUpdated();
+        }
+      }, 2000);
+    } catch (error) {
+      setEnhancementError(error.message);
+    } finally {
+      setIsEnhancing(false);
+    }
   };
 
   return (
@@ -28,6 +69,23 @@ function ArticleDetail({ article, onBack }) {
               <span className="badge enhanced">Enhanced Article</span>
             )}
           </div>
+          {!article.is_enhanced && (
+            <div className="enhance-section">
+              <button 
+                className="enhance-button" 
+                onClick={handleEnhance}
+                disabled={isEnhancing}
+              >
+                {isEnhancing ? 'Enhancing...' : '✨ Enhance Article'}
+              </button>
+              {enhancementError && (
+                <div className="error-message">{enhancementError}</div>
+              )}
+              {enhancementSuccess && (
+                <div className="success-message">{enhancementSuccess}</div>
+              )}
+            </div>
+          )}
           {article.is_enhanced && article.original_article_id && (
             <div className="original-link">
               <a href={`#article-${article.original_article_id}`}>
@@ -39,7 +97,7 @@ function ArticleDetail({ article, onBack }) {
 
         <div
           className="article-body"
-          dangerouslySetInnerHTML={{ __html: article.content }}
+          dangerouslySetInnerHTML={{ __html: sanitizedContent }}
         />
 
         {article.reference_urls && article.reference_urls.length > 0 && (

@@ -13,6 +13,7 @@ A **modular, production-ready 3-phase system** that automatically scrapes articl
 - [Environment Variables](#environment-variables)
 - [Project Structure](#project-structure)
 - [Development Workflow](#development-workflow)
+- [Usage Commands Reference](#usage-commands-reference)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 - [Deployment & Live Link](#deployment--live-link)
@@ -929,71 +930,243 @@ ALTER COLUMN original_url DROP NOT NULL;
 
 ---
 
-## 📝 Common Commands Reference
+## 📝 Usage Commands Reference
 
-### Backend
+### Backend (Laravel)
 
+#### Installation & Setup
 ```bash
-# Install dependencies
-cd backend && composer install
+# Navigate to backend directory
+cd laravel
 
-# Start server
-php -S localhost:8000 -t public
+# Install PHP dependencies
+composer install
 
-# Scrape articles
-php artisan scrape:articles
+# Copy environment file
+cp .env.example .env
 
-# Generate app key
+# Generate application key
 php artisan key:generate
-
-# Run migrations (if working)
-php artisan migrate
 ```
 
-### Enhancement Script
-
+#### Running the Server
 ```bash
-# Install dependencies
-cd enhancement-script && npm install
+# Start development server (PHP built-in)
+php -S localhost:8000 -t public
 
-# Run enhancement
+# Or use Laravel's serve command (if available)
+php artisan serve
+```
+
+#### Article Management
+```bash
+# Scrape the 5 oldest articles from BeyondChats blog
+php artisan scrape:articles
+
+# Delete all articles from database (with confirmation)
+php artisan articles:delete-all
+
+# Delete all articles without confirmation (force)
+php artisan articles:delete-all --force
+```
+
+#### Database Operations
+```bash
+# Run database migrations (if using migrations)
+php artisan migrate
+
+# Check database connection
+php artisan tinker
+# Then in tinker: DB::connection()->getPdo();
+```
+
+### Enhancement Script (Node.js)
+
+#### Installation & Setup
+```bash
+# Navigate to enhancement script directory
+cd backend-node
+
+# Install Node.js dependencies
+npm install
+
+# Copy environment template
+cp env.template .env
+# Then edit .env with your API keys
+```
+
+#### Running Enhancement Scripts
+```bash
+# Run the standalone enhancement script (enhances latest article)
 npm start
 
-# Or directly
+# Or run directly
 node index.js
 ```
 
-### Frontend
-
+#### Enhancement API Server
 ```bash
-# Install dependencies
-cd frontend && npm install
+# Start the Express API server for frontend enhancement requests
+npm run server
 
-# Start dev server
+# Or run directly
+node server.js
+
+# The server will run on http://localhost:3001 by default
+# Endpoint: POST http://localhost:3001/api/enhance/:articleId
+```
+
+### Frontend (React)
+
+#### Installation & Setup
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Install Node.js dependencies
+npm install
+
+# Create .env file (optional, defaults provided)
+# VITE_API_URL=http://localhost:8000/api
+# VITE_ENHANCEMENT_API_URL=http://localhost:3001
+```
+
+#### Development
+```bash
+# Start development server
 npm run dev
 
+# The frontend will be available at http://localhost:5173 (or next available port)
+```
+
+#### Production Build
+```bash
 # Build for production
 npm run build
 
-# Preview production build
+# Preview production build locally
 npm run preview
 ```
 
-### Database
+### Database (PostgreSQL)
 
+#### Connection
 ```bash
-# Connect to PostgreSQL (Windows)
+# Windows PowerShell
 $env:PGPASSWORD="your_password"
 & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -d beyondchats
 
-# Connect (Linux/Mac)
+# Windows Command Prompt
+set PGPASSWORD=your_password
+"C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -d beyondchats
+
+# Linux/Mac
 psql -U postgres -d beyondchats
+```
 
-# Check articles
-SELECT id, title, is_enhanced FROM articles;
+#### Common SQL Queries
+```sql
+-- View all articles
+SELECT id, title, is_enhanced, published_date FROM articles ORDER BY id;
 
-# Count articles
+-- Count total articles
+SELECT COUNT(*) FROM articles;
+
+-- Count unenhanced articles
 SELECT COUNT(*) FROM articles WHERE is_enhanced = false;
+
+-- Count enhanced articles
+SELECT COUNT(*) FROM articles WHERE is_enhanced = true;
+
+-- View enhanced articles with their original article IDs
+SELECT 
+    e.id AS enhanced_id,
+    e.title AS enhanced_title,
+    o.id AS original_id,
+    o.title AS original_title
+FROM articles e
+LEFT JOIN articles o ON e.original_article_id = o.id
+WHERE e.is_enhanced = true;
+
+-- Delete all articles (alternative to artisan command)
+DELETE FROM articles;
+
+-- Reset auto-increment sequence after deletion
+ALTER SEQUENCE articles_id_seq RESTART WITH 1;
+
+-- View article with full content (truncated)
+SELECT id, title, LEFT(content, 100) as content_preview, is_enhanced 
+FROM articles 
+ORDER BY published_date DESC;
+```
+
+### Complete Workflow Commands
+
+#### Starting the Full System
+```bash
+# Terminal 1: Start Laravel backend
+cd laravel
+php -S localhost:8000 -t public
+
+# Terminal 2: Start Node.js enhancement API server
+cd backend-node
+npm run server
+
+# Terminal 3: Start React frontend
+cd frontend
+npm run dev
+```
+
+#### Fresh Start Workflow
+```bash
+# 1. Delete all existing articles
+cd laravel
+php artisan articles:delete-all --force
+
+# 2. Scrape fresh articles
+php artisan scrape:articles
+
+# 3. (Optional) Enhance articles via API or script
+# Via API: Use the frontend "Enhance" button
+# Via script: cd backend-node && npm start
+```
+
+#### Testing the System
+```bash
+# Test backend API
+curl http://localhost:8000/api/articles
+
+# Test enhancement API
+curl -X POST http://localhost:3001/api/enhance/1
+
+# Test frontend (open in browser)
+# http://localhost:5173
+```
+
+### Environment Variables Quick Reference
+
+#### Backend (`laravel/.env`)
+```env
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=beyondchats
+DB_USERNAME=postgres
+DB_PASSWORD=your_password
+```
+
+#### Enhancement Script (`backend-node/.env`)
+```env
+LARAVEL_API_URL=http://localhost:8000/api
+SERPAPI_KEY=your_serpapi_key
+OPENROUTER_API_KEY=your_openrouter_key
+PORT=3001
+```
+
+#### Frontend (`frontend/.env` - Optional)
+```env
+VITE_API_URL=http://localhost:8000/api
+VITE_ENHANCEMENT_API_URL=http://localhost:3001
 ```
 
 ---

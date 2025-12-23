@@ -42,8 +42,13 @@ function App() {
 
   if (loading) {
     return (
-      <div className="container">
-        <div className="loading">Loading articles...</div>
+      <div className="app">
+        <header className="header">
+          <h1>BeyondChats Articles</h1>
+        </header>
+        <main className="main">
+          <div className="loading">Loading articles...</div>
+        </main>
       </div>
     );
   }
@@ -63,9 +68,17 @@ function App() {
       </header>
       <main className="main">
         {selectedArticle ? (
-          <ArticleDetail article={selectedArticle} onBack={handleBack} />
+          <ArticleDetail 
+            article={selectedArticle} 
+            onBack={handleBack}
+            onArticleUpdated={loadArticles}
+          />
         ) : (
-          <ArticleList articles={articles} onArticleClick={handleArticleClick} />
+          <ArticleList 
+            articles={articles} 
+            onArticleClick={handleArticleClick}
+            onArticleUpdated={loadArticles}
+          />
         )}
       </main>
     </div>

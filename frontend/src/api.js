@@ -36,4 +36,19 @@ export async function getArticle(id) {
   }
 }
 
+/**
+ * Enhance an article using the Node backend
+ * @param {number} articleId - Article ID to enhance
+ * @returns {Promise<Object>}
+ */
+export async function enhanceArticle(articleId) {
+  try {
+    const ENHANCEMENT_API_URL = import.meta.env.VITE_ENHANCEMENT_API_URL || 'http://localhost:3001';
+    const response = await axios.post(`${ENHANCEMENT_API_URL}/api/enhance/${articleId}`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.error || `Failed to enhance article: ${error.message}`);
+  }
+}
+
 
