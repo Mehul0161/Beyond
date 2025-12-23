@@ -58,11 +58,15 @@ function ArticleList({ articles, onArticleClick, onArticleUpdated }) {
     }
   };
 
+
   return (
     <div className="article-list">
-      <h2>All Articles</h2>
+      <div className="article-list-header">
+        <h2>All Articles</h2>
+      </div>
+      
       {articles.length === 0 ? (
-        <p className="no-articles">No articles found.</p>
+        <p className="no-articles">No articles available.</p>
       ) : (
         <div className="articles-grid">
           {articles.map((article) => (

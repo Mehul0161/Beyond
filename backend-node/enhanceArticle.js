@@ -255,7 +255,7 @@ CONTENT: [enhanced content in HTML format - use proper HTML tags for everything]
         const response = await axios.post(
             'https://openrouter.ai/api/v1/chat/completions',
             {
-                model: 'mistralai/devstral-2512:free',
+                model: 'xiaomi/mimo-v2-flash:free',
                 messages: [
                     {
                         role: 'user',
@@ -269,7 +269,6 @@ CONTENT: [enhanced content in HTML format - use proper HTML tags for everything]
                 headers: {
                     'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
                     'Content-Type': 'application/json',
-                    'HTTP-Referer': 'https://github.com/your-repo', // Optional: for OpenRouter tracking
                 },
             }
         );

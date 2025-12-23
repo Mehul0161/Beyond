@@ -7,6 +7,7 @@ use GuzzleHttp\Client as GuzzleClient;
 use Symfony\Component\DomCrawler\Crawler;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class ScrapeArticles extends Command
 {
@@ -90,51 +91,111 @@ class ScrapeArticles extends Command
 
         $this->info("Successfully scraped " . count($scrapedArticles) . " articles.");
 
-        // Step 4: Sort by published_date to get the oldest articles
-        usort($scrapedArticles, function ($a, $b) {
+        // Step 4: Get all existing article URLs to filter them out
+        $existingUrls = Article::whereNotNull('original_url')
+            ->pluck('original_url')
+            ->toArray();
+        $this->info("Found " . count($existingUrls) . " existing articles in database.");
+
+        // Step 5: Filter out existing articles
+        $newArticles = array_filter($scrapedArticles, function ($article) use ($existingUrls) {
+            return !in_array($article['url'], $existingUrls);
+        });
+        $newArticles = array_values($newArticles); // Re-index array
+        
+        $this->info("After filtering existing articles: " . count($newArticles) . " new articles found.");
+
+        // Step 6: If we don't have 5 new articles, scrape more pages
+        $targetCount = 5;
+        $currentPage = $lastPage - 1; // Start from second-last page (we already checked last 2)
+        $maxPagesToCheck = 10; // Don't go too far back
+        $pagesChecked = 2; // Already checked last 2 pages
+
+        while (count($newArticles) < $targetCount && $currentPage > 0 && $pagesChecked < $maxPagesToCheck) {
+            $this->info("Need more articles. Checking page {$currentPage}...");
+            
+            $pageUrl = $baseUrl . ($currentPage > 1 ? "page/{$currentPage}/" : '');
+            $pageUrls = $this->collectArticleUrls($client, $pageUrl);
+            
+            if (!empty($pageUrls)) {
+                // Scrape articles from this page
+                $maxToScrapeFromPage = min(count($pageUrls), 10); // Scrape up to 10 from each page
+                foreach (array_slice($pageUrls, 0, $maxToScrapeFromPage) as $url) {
+                    // Skip if we already have this URL
+                    $alreadyScraped = false;
+                    foreach ($scrapedArticles as $existing) {
+                        if ($existing['url'] === $url) {
+                            $alreadyScraped = true;
+                            break;
+                        }
+                    }
+                    if ($alreadyScraped) continue;
+
+                    $this->info("Scraping additional article: {$url}");
+                    $articleData = $this->scrapeArticlePage($client, $url);
+                    if ($articleData && !empty($articleData['title']) && !empty($articleData['content'])) {
+                        $contentLength = strlen(strip_tags($articleData['content']));
+                        if ($contentLength > 200) {
+                            // Check if it's new
+                            if (!in_array($articleData['url'], $existingUrls)) {
+                                $scrapedArticles[] = $articleData;
+                                $newArticles[] = $articleData;
+                                $this->info("✓ New article found: {$articleData['title']}");
+                                
+                                if (count($newArticles) >= $targetCount) {
+                                    break 2; // Break out of both loops
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            $currentPage--;
+            $pagesChecked++;
+        }
+
+        if (empty($newArticles)) {
+            $this->warn('No new articles found. All articles may already be in the database.');
+            return Command::SUCCESS; // Return success but with 0 saved
+        }
+
+        // Step 7: Sort by published_date to get the oldest new articles
+        usort($newArticles, function ($a, $b) {
             $dateA = strtotime($a['published_date'] ?? '1970-01-01');
             $dateB = strtotime($b['published_date'] ?? '1970-01-01');
             return $dateA <=> $dateB; // Ascending order (oldest first)
         });
 
-        // Step 5: Get the 5 oldest articles
-        $oldestArticles = array_slice($scrapedArticles, 0, 5);
+        // Step 8: Get the 5 oldest new articles (or all if less than 5)
+        $articlesToSave = array_slice($newArticles, 0, min($targetCount, count($newArticles)));
         
-        $this->info("Selected 5 oldest articles:");
-        foreach ($oldestArticles as $idx => $article) {
+        $this->info("Selected " . count($articlesToSave) . " oldest new articles to save:");
+        foreach ($articlesToSave as $idx => $article) {
             $this->info("  " . ($idx + 1) . ". {$article['title']} ({$article['published_date']})");
         }
 
-        $this->info('Found ' . count($oldestArticles) . ' oldest articles to save.');
-
         $saved = 0;
-        foreach ($oldestArticles as $articleData) {
+        foreach ($articlesToSave as $articleData) {
             try {
-                // Check if article already exists
-                $existing = Article::where('original_url', $articleData['url'])->first();
-                
-                if ($existing) {
-                    $this->warn("Article already exists: {$articleData['title']}");
-                    continue;
-                }
-
-                Article::create([
-                    'title' => $articleData['title'],
-                    'content' => $articleData['content'],
-                    'original_url' => $articleData['url'],
+                // Use Eloquent to insert articles - it handles boolean conversion properly
+                $article = Article::create([
+                    'title' => (string) $articleData['title'],
+                    'content' => (string) $articleData['content'],
+                    'original_url' => (string) $articleData['url'],
                     'published_date' => $articleData['published_date'],
-                    'is_enhanced' => false,
+                    'is_enhanced' => false, // Use boolean false, Eloquent will handle it
                 ]);
 
                 $saved++;
-                $this->info("Saved: {$articleData['title']}");
+                $this->info("✓ Saved: {$articleData['title']} (ID: {$article->id})");
             } catch (\Exception $e) {
                 $this->error("Error saving article: {$e->getMessage()}");
                 Log::error("Scraping error: {$e->getMessage()}");
             }
         }
 
-        $this->info("Successfully saved {$saved} articles.");
+        $this->info("Successfully saved {$saved} new articles.");
         return Command::SUCCESS;
     }
 

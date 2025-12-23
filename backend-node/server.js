@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import axios from 'axios';
 import { fetchArticleById } from './fetchArticle.js';
 import { searchArticleTitle } from './searchGoogle.js';
 import { scrapeArticle } from './scrapeContent.js';
@@ -8,6 +9,8 @@ import { enhance } from './enhanceArticle.js';
 import { publish } from './publishArticle.js';
 
 dotenv.config();
+
+const LARAVEL_API_URL = process.env.LARAVEL_API_URL || 'http://localhost:8000/api';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -105,6 +108,70 @@ app.post('/api/enhance/:articleId', async (req, res) => {
 });
 
 /**
+ * Scrape articles from BeyondChats
+ * POST /api/scrape-articles
+ * This endpoint calls Laravel's scraping command via HTTP
+ */
+app.post('/api/scrape-articles', async (req, res) => {
+    try {
+        console.log('\n=== Starting article scraping ===\n');
+        console.log(`Calling Laravel API: ${LARAVEL_API_URL}/articles/scrape`);
+
+        // Call Laravel's scrape endpoint
+        const response = await axios.post(`${LARAVEL_API_URL}/articles/scrape`, {}, {
+            timeout: 300000, // 5 minutes timeout for scraping
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+        });
+
+        console.log('✓ Articles scraped successfully\n');
+        console.log('Response:', JSON.stringify(response.data, null, 2));
+
+        res.json({
+            success: true,
+            message: response.data.message || 'Articles scraped successfully',
+            output: response.data.output || '',
+        });
+    } catch (error) {
+        console.error('\n❌ Scraping Error Details:');
+        console.error('Error Message:', error.message);
+        console.error('Status Code:', error.response?.status);
+        console.error('Response Data:', JSON.stringify(error.response?.data, null, 2));
+        console.error('Full Error:', error);
+        
+        // Extract detailed error message from Laravel response
+        let errorMessage = 'Failed to scrape articles';
+        let errorOutput = '';
+        
+        if (error.response) {
+            // Laravel returned an error response
+            errorMessage = error.response.data?.error || error.response.data?.message || error.message;
+            errorOutput = error.response.data?.output || '';
+            
+            // If Laravel returned HTML error page, try to extract useful info
+            if (typeof error.response.data === 'string' && error.response.data.includes('<!DOCTYPE')) {
+                errorMessage = 'Laravel returned an HTML error page. Check Laravel logs for details.';
+            }
+        } else if (error.request) {
+            // Request was made but no response received
+            errorMessage = 'No response from Laravel server. Is it running?';
+        } else {
+            // Error setting up the request
+            errorMessage = error.message;
+        }
+        
+        res.status(error.response?.status || 500).json({
+            success: false,
+            error: errorMessage,
+            output: errorOutput,
+            details: error.response?.data || null,
+        });
+    }
+});
+
+/**
  * Health check endpoint
  */
 app.get('/health', (req, res) => {
@@ -113,7 +180,9 @@ app.get('/health', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`🚀 Article Enhancement API server running on http://localhost:${PORT}`);
-    console.log(`📝 Endpoint: POST http://localhost:${PORT}/api/enhance/:articleId`);
+    console.log(`📝 Endpoints:`);
+    console.log(`   POST http://localhost:${PORT}/api/enhance/:articleId`);
+    console.log(`   POST http://localhost:${PORT}/api/scrape-articles`);
 });
 
 
